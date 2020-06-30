@@ -1,0 +1,134 @@
+version: "2.1"
+
+services: 
+  nginx:
+      image: docker.registry.mama.cn:5000/develop/nginx:1.10.1
+      ports:
+        - "80:80"
+        - "443:443"
+      links:
+        - "php56"
+        - "php70"
+        - "tomcat_pmsapi"
+        - "tomcat_supplierapi"
+        - "tomcat_supplier"
+        - "tomcat_shippingapi"
+      volumes:
+        - ~/opt/htdocs:/opt/htdocs
+        - ~/opt/data/log/nginx:/data/log/nginx
+        - ./nginx/vhosts:/usr/local/nginx/conf/vhosts/
+        - ./nginx/ssl:/usr/local/nginx/conf/ssl/
+      networks:
+        default_net:
+          ipv4_address: 172.172.0.2
+  php56:
+      build: 
+        context: ./php
+        dockerfile: php5-Dockerfile
+      ports:
+        - "9001:9001"
+      volumes:
+        - ~/opt/htdocs:/opt/htdocs
+        - ~/opt/data/log/php:/data/log/php
+        - ~/opt/data/log/php:/usr/local/php/var/log
+        - ~/opt/data/log/supervisor:/data/log/supervisor
+        - ~/opt/data/log/xdebug:/data/log/xdebug
+        - ./php/php-fpm:/usr/local/php/etc/php-fpm.d/
+        - ./php/php-extension:/usr/local/php/etc/conf.d/
+        - ./php/php5.ini:/usr/local/php/etc/php.ini
+        - ./php/supervisor/supervisord.conf:/etc/supervisord/supervisord.conf
+        #- ./php/supervisor/conf.d/orderapi_consumer.conf:/etc/supervisord/conf.d/orderapi_consumer.conf
+        - ./php/supervisor/conf.d/orderapi_swoole.conf:/etc/supervisord/conf.d/orderapi_swoole.conf
+      env_file:
+        - php/php56/env/common.env
+        - php/php56/env/xsx/local/www.env
+        - php/php56/env/xsx/local/goodsapi.env
+        - php/php56/env/xsx/local/orderapi.env
+        - php/php56/env/dp/develop/dianping.env
+        - php/php56/env/mai/develop/mai.env
+        - php/php56/env/others/develop/crm.env
+        - php/php56/env/xsx/develop/wallet.env
+        - php/php56/env/xsx/local/pay.env
+        - php/php56/env/xsx/local/payapi.env
+        - php/php56/env/xsx/develop/act.env
+      networks:
+        default_net:
+          ipv4_address: 172.172.0.3
+
+  php70:
+      image: docker.registry.mama.cn:5000/develop/php:7.0.14-v5
+      volumes:
+        - ~/opt/htdocs:/opt/htdocs
+        - ~/data/log/php:/data/log/php
+        - ~/data/log/php:/usr/local/php/var/log
+        - ./php/php-fpm:/usr/local/php/etc/php-fpm.d/
+        - ./php/php-extension:/usr/local/php/etc/conf.d/
+        - ./php/php7.ini:/usr/local/php/etc/php.ini
+      env_file:
+        - php/php56/env/mai/develop/vbot.env
+        - php/php56/env/others/develop/cs.mama.cn.env
+        - php/php56/env/others/develop/hb.mama.cn.env
+      external_links:
+        - docker_mysql:docker_mysql
+        - docker_mysql:docker_redis
+      networks:
+        default_net:
+          ipv4_address: 172.172.0.4
+
+  tomcat_pmsapi:
+      image: docker.registry.mama.cn:5000/develop/tomcat:7.0.85
+      volumes:
+        - /data/wwwroot:/data/wwwroot
+        - /data/wwwroot/pms.api.xiaoshuxiong.com/target:/usr/local/apache-tomcat-7.0.85/webapps/
+      env_file:
+        - php/php56/env/java/develop/pmsapi.env
+      extra_hosts:
+        - "nexus.xiaoshuxiong.com:118.186.65.166"
+      networks:
+        - default_net
+
+  tomcat_supplierapi:
+      image: docker.registry.mama.cn:5000/develop/tomcat:7.0.85
+      volumes:
+        - /data/wwwroot:/data/wwwroot
+        - /data/wwwroot/supplier.api.xiaoshuxiong.com/target:/usr/local/apache-tomcat-7.0.85/webapps/
+      env_file:
+        - php/php56/env/java/develop/supplier.env
+      extra_hosts:
+        - "nexus.xiaoshuxiong.com:118.186.65.166"
+      networks:
+        - default_net
+
+  tomcat_supplier:
+      image: docker.registry.mama.cn:5000/develop/tomcat:7.0.85
+      volumes:
+        - /data/wwwroot:/data/wwwroot
+        - /data/wwwroot/supplier.xiaoshuxiong.com/target:/usr/local/apache-tomcat-7.0.85/webapps/
+      env_file:
+        - php/php56/env/java/develop/supplier.env
+      extra_hosts:
+        - "nexus.xiaoshuxiong.com:118.186.65.166"
+      networks:
+        - default_net
+
+  tomcat_shippingapi:
+      image: docker.registry.mama.cn:5000/develop/tomcat:7.0.85
+      volumes:
+        - /data/wwwroot:/data/wwwroot
+        - /data/wwwroot/shipping.api.xiaoshuxiong.com/target:/usr/local/apache-tomcat-7.0.85/webapps/
+      env_file:
+        - php/php56/env/java/develop/shippingapi.env
+      extra_hosts:
+        - "nexus.xiaoshuxiong.com:118.186.65.166"
+      networks:
+        - default_net
+
+networks:
+  default_net:
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.172.0.0/24
+        gateway: 172.172.0.1
